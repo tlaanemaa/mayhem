@@ -200,6 +200,20 @@ For MVP: Kenney + Quaternius for world props and creatures, Mixamo for the playe
 
 ---
 
+## Architecture stress tests
+
+A few hypothetical scenarios walked through to verify the design holds. These are not a roadmap — just proof that the foundation doesn't break under fun ideas.
+
+**A cow that follows players and shoots bananas** — new `FollowTarget` and `ShootsBananas` components, a `spawnCow` factory, a `FollowSystem` and `BananaShootSystem` on the server. New `ModelType.BANANA` and a GLB in the client registry. Nothing else changes.
+
+**A pilotable airplane** — new `Vehicle`, `Pilotable`, and `Mounted` components. When a player enters a plane, `PlayerMovementSystem` skips them and `VehicleControlSystem` reads their inputs instead, applying them to the plane's physics body. `PlayerActions` gains two fields: `enter` and `exit`. Everything else unchanged.
+
+**A rocket launcher with a visible explosion and loud boom** — rocket is a standard projectile with an `Explosive` component. On collision, server spawns a short-lived `Explosion` entity (despawns in 0.5s). Rapier spatial query finds nearby entities and applies an outward impulse scaled by distance. On the client, when an `Explosion` entity appears in the snapshot, the render system plays a particle effect and the sound system plays a spatial boom via Web Audio. Server never thinks about visuals or sound.
+
+**Player-built destructible structures** — blocks placed by players are standard entities with a `Snappable` component. When placed near another block's snap point the server creates a Rapier `FixedJoint` between them — the structure now moves as one under physics. A `JointBreakSystem` monitors forces each tick and removes joints that exceed `snapStrength`. Joints are relationships between two entities, so they live in a side `Map` rather than ECS components — the right tool for that shape of data. The client has no knowledge of joints; it just sees positions update in snapshots and renders whatever chaos results.
+
+---
+
 ## Where we are now vs where this could go
 
 **Now:** drop into a world, run around, shoot, see other players, physics works, gamepad works, deploy it.
