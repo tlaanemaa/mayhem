@@ -171,9 +171,32 @@ These are the distinct areas of the system. Not epics or tickets — just the na
 
 **Rendering** — Three.js scene, FPS camera, materials, lighting, shadows. Terrain mesh is built here from terrain data. Post-processing effects live here too.
 
+**Entity factories** — one function per entity type that defines everything it is: components, initial values, physics shape, model. `spawnCow(world, x, y, z)` adds the entity, attaches `Health`, `Renderable`, `WanderBehaviour`, and a physics collider in one place. This is the standard **prefab** pattern (Unity calls them prefabs, Unreal calls them blueprints). Adding a new thing to the game means adding a factory function — nothing else needs to change. Because bitecs components are typed arrays of numbers, model types are stored as a numeric enum in `shared/models.ts` (`COW = 1`, `OAK_TREE = 2` etc.) that both server and client import. The server stores the number on the entity, the snapshot carries it, the client looks it up in its asset registry.
+
 **Game systems** — the actual game: player movement, jumping, shooting, projectiles, health, whatever we invent next. This is where the fun stuff goes.
 
 **Deployment** — Dockerfile, docker-compose for local dev, GitHub Actions to build and push the image, Portainer on Hetzner to redeploy.
+
+---
+
+## Assets and animation
+
+3D models are **GLB files** (binary GLTF — the web standard for 3D assets). They bundle geometry, materials, textures, and skeletal animations in a single file. Three.js loads them with `GLTFLoader`. They live in `packages/client/assets/` and are served as static files.
+
+The server never sees models. It works with primitive physics shapes — a capsule for a player, a box for a cow. The client has the actual GLB and plays animations on top of whatever position the server says the entity is at.
+
+**Animations** are clips embedded in the GLB file (e.g. `"walk"`, `"idle"`, `"jump"`). Three.js plays them via `AnimationMixer`. The client derives which clip to play from entity state — if the cow's velocity is above zero, play `"walk"`, otherwise play `"idle"`. The walk animation plays in place; the physics is what actually moves the cow. Walk animation playback speed is scaled to match actual velocity so feet don't slide.
+
+This is a standard animation state machine — the same pattern Unity and Unreal use.
+
+**Where to get models:**
+
+- **[Kenney.nl](https://kenney.nl)** — the go-to for this project. Massive library of CC0 (free, no attribution needed) low-poly assets: nature, farm animals, buildings, characters, vehicles. Blocky style, exactly the aesthetic we're going for. First stop for almost everything in the world.
+- **[Quaternius](https://quaternius.com)** — free CC0 animated character and animal packs. Has a cow. Humanoid characters come with walk/run/jump/idle cycles already baked in. Exports GLB directly.
+- **[Mixamo](https://www.mixamo.com)** (Adobe, free) — for the player character. Upload any humanoid mesh, it auto-rigs it and provides hundreds of animations. The easiest way to get a fully animated player without any modelling knowledge.
+- **[Poly Pizza](https://poly.pizza)** — curated free low-poly models, quick to browse when you need something specific.
+
+For MVP: Kenney + Quaternius for world props and creatures, Mixamo for the player character. No 3D modelling skills required.
 
 ---
 
