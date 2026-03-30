@@ -8,7 +8,7 @@ The design goal is a foundation strong enough that new ideas are easy to act on.
 
 ## What it is
 
-An always-online shared world. One server, one world, everyone in it together. No lobbies, no sessions — you open the browser and you're there.
+An always-online server running multiple games simultaneously. You open the browser, see a lobby with the running games and their player counts, pick one, and you're in. No accounts, no matchmaking — just pick and play.
 
 The world is a gently rolling landscape generated from a seed. Same seed, same world every time. Players appear as blocky characters. You can move around, shoot, interact with things, and watch physics happen. The game runs at a fixed server tick rate so it behaves consistently regardless of what framerate anyone's running at.
 
@@ -100,12 +100,15 @@ interface WorldSnapshot {
 
 interface EntitySnapshot {
   id: number          // server-assigned; client mirrors this ID in its own ECS
-  type: 'player' | 'projectile' | 'prop'
+  type: 'player' | 'projectile' | 'prop'  // gameplay category — what it does
+  modelId: number     // numeric ModelType enum — which GLB to render (see shared/models.ts)
   position: { x: number; y: number; z: number }
   rotation: { x: number; y: number; z: number; w: number }
   health?: number
 }
 ```
+
+`type` and `modelId` serve different purposes: `type` tells the game what an entity *does* (player, projectile, prop), `modelId` tells the client what it *looks like* (which GLB file to load). A `prop` type might render as a cow, a tree, or a house depending on `modelId`.
 
 Entity IDs are assigned by the server. The client never invents entity IDs — it creates local ECS entities that mirror the server's IDs. When an entity disappears from the snapshot it gets cleaned up on the client.
 
@@ -113,23 +116,87 @@ The `sequenceNumber` on every input packet and `tick` on every snapshot cost not
 
 ---
 
+## Multi-game architecture
+
+The server supports multiple simultaneous games. Players connect, see a lobby, pick a game, and get dropped in. Each game is completely isolated — its own ECS world, its own Rapier simulation, its own game loop.
+
+The core abstraction is `GameInstance`:
+
+```typescript
+interface GameMode {
+  id: string
+  displayName: string
+  setup(world: IWorld, rapier: World): void
+  systems: System[]
+}
+
+interface GameInstance {
+  mode: GameMode
+  world: IWorld
+  rapier: World
+  loop: NodeJS.Timer
+}
+```
+
+Socket.io **rooms** handle routing — built into Socket.io, no extra infrastructure. Each game instance is a room. Every tick (20hz), the game instance broadcasts a `WorldSnapshot` to all players in its room and nobody else.
+
+Server startup registers all active games:
+
+```typescript
+const games: GameMode[] = [
+  mayhemMode,
+  arenaMode,
+  // racingMode,  // comment out to disable
+]
+
+games.forEach(startGameInstance)
+```
+
+Adding a new game is a new `GameMode` and one line in this list. The engine is identical across all games.
+
+The client shows a lobby on connect: running games with player counts. Pick one, join. Switching games leaves the current room and joins another.
+
+## Player identity & persistence
+
+Players are identified by a **UUID stored in `localStorage`** — generated on first visit, sent on every connect. The server uses this as the player key, not the socket ID (which changes on reconnect).
+
+```typescript
+// server/playerStore.ts
+interface SavedPlayerState {
+  gameId: string
+  position: Vec3
+  health: number
+}
+const store = new Map<string, SavedPlayerState>()
+```
+
+On connect with a known UUID: restore position and health. On disconnect: save current state. Persistence is per-game — reconnecting to mayhem restores your mayhem state. State is lost on server restart until a database is added. Swapping the `Map` for a database is a one-file change.
+
 ## How it's structured
 
 ```
 mayhem/
   packages/
-    client/    # Three.js game, runs in browser
-    server/    # Node.js game server
-    shared/    # Types, terrain gen, constants — imported by both
+    shared/        # network types, bitecs component definitions, ModelType enum, terrain gen
+    engine/        # GameInstance factory, game loop, Socket.io base, Rapier initialisation
+    games/
+      mayhem/      # mayhem systems, factories, world config
+      arena/       # arena systems, factories, world config
+    client/        # Three.js renderer, lobby screen, asset registry
+    server/        # entry point — loads game modes, starts instances
   Dockerfile
   docker-compose.yml
 ```
 
-`shared/` is the backbone of correctness. Any type that crosses the network lives there. Client and server can never disagree on what a player or snapshot looks like.
+`shared/` is the backbone of correctness. Network types, bitecs component definitions, and the `ModelType` enum all live here — anything both client and server must agree on. Neither side can drift without a compile error.
+
+`engine/` is what all games share behaviourally — the `GameInstance` factory, the game loop, the Socket.io room wiring, Rapier world initialisation. It imports from `shared/` and exposes the infrastructure each game plugs into. Individual games import from both `engine/` and `shared/`, then register their own systems and factories.
 
 ---
 
 ## System diagram
+
+The diagram shows one game instance. The server runs multiple isolated instances simultaneously — each with its own ECS world, Rapier simulation, and game loop. Socket.io rooms route each client's traffic to the right instance. The client joins a room after picking a game in the lobby.
 
 ```mermaid
 graph TB
@@ -150,7 +217,7 @@ graph TB
     ServerECS -->|WorldSnapshot| WS2
   end
 
-  WS <-->|Socket.io| WS2
+  WS <-->|Socket.io room| WS2
 ```
 
 ---
