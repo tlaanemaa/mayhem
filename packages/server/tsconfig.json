@@ -8,9 +8,5 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../shared" },
-    { "path": "../engine" },
-    { "path": "../games/mayhem" }
-  ]
+  "references": [{ "path": "../shared" }, { "path": "../engine" }, { "path": "../games/mayhem" }]
 }

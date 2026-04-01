@@ -36,28 +36,33 @@ packages/
 ## Core Architecture
 
 **Server-authoritative multiplayer at 20hz:**
+
 - Clients send `InputPacket` (actions pressed, sequenceNumber, timestamp) — never positions
 - Server simulates one tick every 50ms using real `dt` from `performance.now()` (not assumed 50ms — loop jitter means actual dt varies)
 - Server broadcasts `WorldSnapshot` to all players in a Socket.io room each tick
 - Clients render what the server says; client ECS is for visual-only effects
 
 **ECS on both sides (bitecs):**
+
 - Entities are integer IDs; components are typed arrays (`Position.x[eid]`)
 - Systems are pure functions over queries
 - `Changed()` queries skip untouched entities — static props cost almost nothing per tick
 
 **Multi-game instances:**
+
 - Each game is a `GameMode` with `setup()` and `systems[]`
 - `GameInstance` = isolated bitecs world + Rapier simulation + 20hz loop
 - Socket.io rooms route each client to the right instance
 - Adding a new game = new `GameMode` + one line in server startup list
 
 **Shared terrain (no network cost):**
+
 - Simplex noise heightmap in `shared/terrain.ts` runs on both sides with the same seed
 - Client builds Three.js mesh; server builds Rapier heightfield — guaranteed to match
 - Only the seed is sent over the network (on connect)
 
 **Entity factories (prefab pattern):**
+
 - One function per entity type: `spawnPlayer()`, `spawnBullet()`, `spawnTree()`
 - Defines all components, initial values, physics shape, and model in one place
 - `ModelType` enum in `shared/models.ts` maps numeric IDs to GLB paths (e.g. `COW = 1`, `OAK_TREE = 2`)
@@ -67,24 +72,24 @@ packages/
 
 ```typescript
 interface InputPacket {
-  sequenceNumber: number  // enables client-side prediction later at no cost now
-  timestamp: number       // client clock for prediction reconciliation
-  actions: PlayerActions
+  sequenceNumber: number; // enables client-side prediction later at no cost now
+  timestamp: number; // client clock for prediction reconciliation
+  actions: PlayerActions;
 }
 
 interface WorldSnapshot {
-  tick: number            // enables delta compression later
-  timestamp: number       // server clock for interpolation
-  entities: EntitySnapshot[]
+  tick: number; // enables delta compression later
+  timestamp: number; // server clock for interpolation
+  entities: EntitySnapshot[];
 }
 
 interface EntitySnapshot {
-  id: number              // server-assigned; client mirrors this ID
-  type: 'player' | 'projectile' | 'prop'  // what it does
-  modelId: number         // which GLB to render
-  position: { x: number; y: number; z: number }
-  rotation: { x: number; y: number; z: number; w: number }
-  health?: number
+  id: number; // server-assigned; client mirrors this ID
+  type: 'player' | 'projectile' | 'prop'; // what it does
+  modelId: number; // which GLB to render
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number; w: number };
+  health?: number;
 }
 ```
 
@@ -92,15 +97,15 @@ interface EntitySnapshot {
 
 ## Stack
 
-| Concern | Choice |
-|---|---|
-| Rendering | Three.js |
-| ECS | bitecs |
-| Physics | Rapier.js (Rust/WASM) |
-| Networking | Socket.io |
-| Server | Node.js + TypeScript |
-| Bundler | Vite |
-| Hosting | Docker on Hetzner VPS via Portainer |
+| Concern    | Choice                              |
+| ---------- | ----------------------------------- |
+| Rendering  | Three.js                            |
+| ECS        | bitecs                              |
+| Physics    | Rapier.js (Rust/WASM)               |
+| Networking | Socket.io                           |
+| Server     | Node.js + TypeScript                |
+| Bundler    | Vite                                |
+| Hosting    | Docker on Hetzner VPS via Portainer |
 
 Single Docker container: Express serves the compiled client, Socket.io runs on the same HTTP server.
 

@@ -8,8 +8,5 @@
     "rootDir": "src"
   },
   "include": ["src"],
-  "references": [
-    { "path": "../../shared" },
-    { "path": "../../engine" }
-  ]
+  "references": [{ "path": "../../shared" }, { "path": "../../engine" }]
 }

@@ -18,15 +18,15 @@ Controls work on keyboard/mouse, gamepad, and touch — whichever you have. The 
 
 ## Stack
 
-| Concern | Choice | Why |
-|---|---|---|
-| Rendering | Three.js | Industry standard web 3D, huge community, close to the metal |
-| ECS | bitecs | Fastest JS ECS, cache-friendly typed arrays, widely used in web games |
-| Physics | Rapier.js | Rust/WASM, best performance available, renderer-agnostic |
-| Multiplayer | Socket.io | Industry standard WebSockets, handles reconnects |
-| Server | Node.js + TypeScript | Same language both sides, share types directly |
-| Bundler | Vite | Fast HMR, standard |
-| Hosting | Docker on Hetzner VPS | Self-hosted, already paid for, deploy via Portainer |
+| Concern     | Choice                | Why                                                                   |
+| ----------- | --------------------- | --------------------------------------------------------------------- |
+| Rendering   | Three.js              | Industry standard web 3D, huge community, close to the metal          |
+| ECS         | bitecs                | Fastest JS ECS, cache-friendly typed arrays, widely used in web games |
+| Physics     | Rapier.js             | Rust/WASM, best performance available, renderer-agnostic              |
+| Multiplayer | Socket.io             | Industry standard WebSockets, handles reconnects                      |
+| Server      | Node.js + TypeScript  | Same language both sides, share types directly                        |
+| Bundler     | Vite                  | Fast HMR, standard                                                    |
+| Hosting     | Docker on Hetzner VPS | Self-hosted, already paid for, deploy via Portainer                   |
 
 Single Docker container: Express serves the compiled client, Socket.io runs on the same HTTP server. Split into separate containers if there's ever a reason.
 
@@ -49,20 +49,20 @@ Clients never send "I moved here". They send "here's what I was pressing at this
 ```typescript
 // shared/types.ts
 interface InputPacket {
-  sequenceNumber: number  // enables client-side prediction later, costs nothing now
-  timestamp: number       // client clock; used for prediction reconciliation later
-  actions: PlayerActions  // what is pressed/held this frame
+  sequenceNumber: number; // enables client-side prediction later, costs nothing now
+  timestamp: number; // client clock; used for prediction reconciliation later
+  actions: PlayerActions; // what is pressed/held this frame
 }
 
 interface PlayerActions {
-  moveForward: boolean
-  moveBack: boolean
-  moveLeft: boolean
-  moveRight: boolean
-  jump: boolean
-  shoot: boolean
-  aim: boolean
-  interact: boolean
+  moveForward: boolean;
+  moveBack: boolean;
+  moveLeft: boolean;
+  moveRight: boolean;
+  jump: boolean;
+  shoot: boolean;
+  aim: boolean;
+  interact: boolean;
 }
 ```
 
@@ -93,22 +93,22 @@ These types in `shared/` are the contract between client and server. Both sides 
 ```typescript
 // shared/types.ts
 interface WorldSnapshot {
-  tick: number        // server tick counter; enables delta compression later
-  timestamp: number   // server clock; used for interpolation timing
-  entities: EntitySnapshot[]
+  tick: number; // server tick counter; enables delta compression later
+  timestamp: number; // server clock; used for interpolation timing
+  entities: EntitySnapshot[];
 }
 
 interface EntitySnapshot {
-  id: number          // server-assigned; client mirrors this ID in its own ECS
-  type: 'player' | 'projectile' | 'prop'  // gameplay category — what it does
-  modelId: number     // numeric ModelType enum — which GLB to render (see shared/models.ts)
-  position: { x: number; y: number; z: number }
-  rotation: { x: number; y: number; z: number; w: number }
-  health?: number
+  id: number; // server-assigned; client mirrors this ID in its own ECS
+  type: 'player' | 'projectile' | 'prop'; // gameplay category — what it does
+  modelId: number; // numeric ModelType enum — which GLB to render (see shared/models.ts)
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number; w: number };
+  health?: number;
 }
 ```
 
-`type` and `modelId` serve different purposes: `type` tells the game what an entity *does* (player, projectile, prop), `modelId` tells the client what it *looks like* (which GLB file to load). A `prop` type might render as a cow, a tree, or a house depending on `modelId`.
+`type` and `modelId` serve different purposes: `type` tells the game what an entity _does_ (player, projectile, prop), `modelId` tells the client what it _looks like_ (which GLB file to load). A `prop` type might render as a cow, a tree, or a house depending on `modelId`.
 
 Entity IDs are assigned by the server. The client never invents entity IDs — it creates local ECS entities that mirror the server's IDs. When an entity disappears from the snapshot it gets cleaned up on the client.
 
@@ -124,17 +124,17 @@ The core abstraction is `GameInstance`:
 
 ```typescript
 interface GameMode {
-  id: string
-  displayName: string
-  setup(world: IWorld, rapier: World): void
-  systems: System[]
+  id: string;
+  displayName: string;
+  setup(world: IWorld, rapier: World): void;
+  systems: System[];
 }
 
 interface GameInstance {
-  mode: GameMode
-  world: IWorld
-  rapier: World
-  loop: NodeJS.Timer
+  mode: GameMode;
+  world: IWorld;
+  rapier: World;
+  loop: NodeJS.Timer;
 }
 ```
 
@@ -147,9 +147,9 @@ const games: GameMode[] = [
   mayhemMode,
   arenaMode,
   // racingMode,  // comment out to disable
-]
+];
 
-games.forEach(startGameInstance)
+games.forEach(startGameInstance);
 ```
 
 Adding a new game is a new `GameMode` and one line in this list. The engine is identical across all games.
@@ -163,11 +163,11 @@ Players are identified by a **UUID stored in `localStorage`** — generated on f
 ```typescript
 // server/playerStore.ts
 interface SavedPlayerState {
-  gameId: string
-  position: Vec3
-  health: number
+  gameId: string;
+  position: Vec3;
+  health: number;
 }
-const store = new Map<string, SavedPlayerState>()
+const store = new Map<string, SavedPlayerState>();
 ```
 
 On connect with a known UUID: restore position and health. On disconnect: save current state. Persistence is per-game — reconnecting to mayhem restores your mayhem state. State is lost on server restart until a database is added. Swapping the `Map` for a database is a one-file change.

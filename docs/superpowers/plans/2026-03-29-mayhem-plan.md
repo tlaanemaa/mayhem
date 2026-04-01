@@ -59,4 +59,3 @@ See `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the fu
 ---
 
 ## Done
-
