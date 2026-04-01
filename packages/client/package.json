@@ -1,0 +1,14 @@
+{
+  "name": "@mayhem/client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mayhem/shared": "*"
+  }
+}
