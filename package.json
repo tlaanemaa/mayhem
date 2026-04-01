@@ -22,11 +22,11 @@
     "start": "node packages/server/dist/index.js"
   },
   "devDependencies": {
-    "@types/node": "^25.0.0",
     "@eslint/js": "^9.0.0",
+    "@types/node": "^25.0.0",
     "eslint": "^9.0.0",
-    "eslint-plugin-sonarjs": "^2.0.0",
-    "eslint-plugin-unicorn": "^55.0.0",
+    "eslint-plugin-sonarjs": "^4.0.2",
+    "eslint-plugin-unicorn": "^64.0.0",
     "knip": "^5.0.0",
     "prettier": "^3.0.0",
     "typescript": "^5.7.0",
