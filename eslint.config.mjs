@@ -7,7 +7,13 @@ import unicorn from 'eslint-plugin-unicorn';
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.tsbuildinfo', 'eslint.config.mjs'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/*.tsbuildinfo',
+      'eslint.config.mjs',
+      'knip.config.ts',
+    ],
   },
 
   // JS recommended for JS/MJS files
