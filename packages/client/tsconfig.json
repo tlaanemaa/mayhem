@@ -8,7 +8,6 @@
     "declarationMap": false,
     "composite": false,
     "outDir": "dist",
-    "rootDir": "src",
     "noEmit": true
   },
   "include": ["src", "vite.config.ts"]
