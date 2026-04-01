@@ -3,7 +3,7 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package manifests first — Docker layer cache skips npm ci if these don't change
+# Copy package manifests first — Docker layer cache skips npm install if these don't change
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/engine/package.json packages/engine/
@@ -11,7 +11,7 @@ COPY packages/games/mayhem/package.json packages/games/mayhem/
 COPY packages/client/package.json packages/client/
 COPY packages/server/package.json packages/server/
 
-RUN npm ci
+RUN npm install
 
 COPY . .
 
@@ -30,7 +30,7 @@ COPY packages/games/mayhem/package.json packages/games/mayhem/
 COPY packages/client/package.json packages/client/
 COPY packages/server/package.json packages/server/
 
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 COPY --from=builder /app/packages/shared/dist packages/shared/dist
 COPY --from=builder /app/packages/engine/dist packages/engine/dist
