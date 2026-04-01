@@ -1,0 +1,35 @@
+{
+  "name": "mayhem",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "packages/engine",
+    "packages/games/mayhem",
+    "packages/client",
+    "packages/server"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/server/tsconfig.json && vite build --config packages/client/vite.config.ts",
+    "typecheck": "tsc -b packages/server/tsconfig.json && tsc --noEmit -p packages/client/tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "check": "npm run format:check && npm run typecheck && npm run lint && npm run knip",
+    "dev": "vite --config packages/client/vite.config.ts",
+    "start": "node packages/server/dist/index.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-sonarjs": "^2.0.0",
+    "eslint-plugin-unicorn": "^55.0.0",
+    "knip": "^5.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vite": "^6.0.0"
+  }
+}
