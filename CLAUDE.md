@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Pre-development — architecture and planning documents exist, no source code has been written yet. The first task is scaffolding the monorepo. See `docs/superpowers/plans/2026-03-29-mayhem-plan.md` for the living task list and `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the full architecture.
 
+## Git Workflow
+
+Always work in a feature branch — never commit directly to `main`. Create a branch before starting any task and push it. The user merges to `main` via a GitHub PR. `main` is the deployment branch: a push to `main` triggers the GitHub Actions workflow and deploys to production.
+
 ## Development Commands
 
 Once the monorepo is scaffolded:
