@@ -3,6 +3,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+# Upgrade npm to match the version used to generate the lockfile
+RUN npm install -g npm@11
+
 # Copy package manifests first — Docker layer cache skips npm ci if these don't change
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
@@ -22,6 +25,9 @@ RUN npm run build
 FROM node:22-alpine AS runner
 
 WORKDIR /app
+
+# Upgrade npm to match the version used to generate the lockfile
+RUN npm install -g npm@11
 
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
