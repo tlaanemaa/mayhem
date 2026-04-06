@@ -1,118 +1,70 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Working Practices
+
+- Always use the right skill for the job — check available skills before starting any task (brainstorming, debugging, TDD, branch setup, etc.)
+- Always work in a feature branch unless the user explicitly says otherwise
+- Before planning any task, read the architecture design doc: `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md`
 
 ## Project Status
 
-Pre-development — architecture and planning documents exist, no source code has been written yet. The first task is scaffolding the monorepo. See `docs/superpowers/plans/2026-03-29-mayhem-plan.md` for the living task list and `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the full architecture.
+In active development. Monorepo scaffolded, rendering skeleton complete. Next: shared types & protocol. Living task list: `docs/superpowers/plans/2026-03-29-mayhem-plan.md`.
 
 ## Git Workflow
 
-Always work in a feature branch — never commit directly to `main`. Create a branch before starting any task and push it. The user merges to `main` via a GitHub PR. `main` is the deployment branch: a push to `main` triggers the GitHub Actions workflow and deploys to production.
+Never commit to `main` directly. Push a feature branch; user merges via GitHub PR. Pushing to `main` triggers GitHub Actions → Docker image → GitHub Container Registry → manual redeploy in Portainer on Hetzner VPS.
 
-## Development Commands
-
-Once the monorepo is scaffolded:
+## Commands
 
 ```bash
-docker compose up         # local dev (all packages together)
-npm run build             # build all packages
-npm run dev               # watch mode via Vite (client)
+docker compose up    # local dev
+npm run dev          # Vite client dev server
+npm run build        # tsc + vite build (server + client)
+npm start            # run built server
+npm run typecheck    # type-check all packages
+npm run lint         # ESLint
+npm run check        # format + typecheck + lint:fix + knip (run before PRs)
 ```
 
-Deployment: `git push` to `main` → GitHub Actions builds Docker image → pushed to GitHub Container Registry → manual redeploy in Portainer on Hetzner VPS.
-
-## Planned Package Structure
+## Package Structure
 
 ```
 packages/
   shared/         # network types, bitecs component defs, ModelType enum, terrain gen
-  engine/         # GameInstance factory, 20hz game loop, Socket.io wiring, Rapier init
-  games/
-    mayhem/       # mayhem systems, factories, world config
-    arena/        # arena game mode (future)
+  engine/         # GameInstance factory, 20hz loop, Socket.io wiring, Rapier init
+  games/mayhem/   # mayhem systems, factories, world config
   client/         # Three.js renderer, lobby screen, asset registry
   server/         # entry point — loads game modes, starts instances
 ```
 
-`shared/` is the backbone of correctness. Anything both client and server must agree on lives here — if either side drifts, TypeScript catches it at compile time.
+`shared/` is the source of truth for anything client and server must agree on.
 
-## Core Architecture
+## Architecture
 
-**Server-authoritative multiplayer at 20hz:**
+> Target design — always check source files for current implementation state.
 
-- Clients send `InputPacket` (actions pressed, sequenceNumber, timestamp) — never positions
-- Server simulates one tick every 50ms using real `dt` from `performance.now()` (not assumed 50ms — loop jitter means actual dt varies)
-- Server broadcasts `WorldSnapshot` to all players in a Socket.io room each tick
-- Clients render what the server says; client ECS is for visual-only effects
+**Server-authoritative at 20hz.** Clients send `InputPacket` (actions, never positions). Server ticks every 50ms using real `dt` from `performance.now()` — loop jitter means dt varies, never assume 50ms. Broadcasts `WorldSnapshot` to the Socket.io room each tick. Client ECS is visual-only.
 
-**ECS on both sides (bitecs):**
+**ECS (bitecs).** Entities are integer IDs; components are typed arrays (`Position.x[eid]`). Systems are pure functions over queries. `Changed()` skips untouched entities — static props are nearly free.
 
-- Entities are integer IDs; components are typed arrays (`Position.x[eid]`)
-- Systems are pure functions over queries
-- `Changed()` queries skip untouched entities — static props cost almost nothing per tick
+**Multi-game instances.** Each game is a `GameMode` (`setup()` + `systems[]`). `GameInstance` = isolated bitecs world + Rapier + 20hz loop. Adding a new game = new `GameMode` + one line in server startup.
 
-**Multi-game instances:**
+**Shared terrain.** Simplex noise heightmap in `shared/terrain.ts` runs on both sides from the same seed. Client builds Three.js mesh; server builds Rapier heightfield. Only the seed goes over the network.
 
-- Each game is a `GameMode` with `setup()` and `systems[]`
-- `GameInstance` = isolated bitecs world + Rapier simulation + 20hz loop
-- Socket.io rooms route each client to the right instance
-- Adding a new game = new `GameMode` + one line in server startup list
+**Entity factories.** One function per type (`spawnPlayer`, `spawnBullet`, `spawnTree`). `ModelType` enum in `shared/models.ts` maps numeric IDs to GLB paths. Server stores the number; client asset registry resolves it to a mesh.
 
-**Shared terrain (no network cost):**
+## Network Protocol (`shared/types.ts`)
 
-- Simplex noise heightmap in `shared/terrain.ts` runs on both sides with the same seed
-- Client builds Three.js mesh; server builds Rapier heightfield — guaranteed to match
-- Only the seed is sent over the network (on connect)
+`InputPacket` (client→server): `sequenceNumber`, `timestamp`, `actions: PlayerActions`
+`WorldSnapshot` (server→all): `tick`, `timestamp`, `entities: EntitySnapshot[]`
+`EntitySnapshot`: `id`, `type`, `modelId`, `position`, `rotation`, `health?`
 
-**Entity factories (prefab pattern):**
-
-- One function per entity type: `spawnPlayer()`, `spawnBullet()`, `spawnTree()`
-- Defines all components, initial values, physics shape, and model in one place
-- `ModelType` enum in `shared/models.ts` maps numeric IDs to GLB paths (e.g. `COW = 1`, `OAK_TREE = 2`)
-- Server stores the number on the entity; snapshot carries it; client looks it up in asset registry
-
-## Network Protocol Types (in `shared/types.ts`)
-
-```typescript
-interface InputPacket {
-  sequenceNumber: number; // enables client-side prediction later at no cost now
-  timestamp: number; // client clock for prediction reconciliation
-  actions: PlayerActions;
-}
-
-interface WorldSnapshot {
-  tick: number; // enables delta compression later
-  timestamp: number; // server clock for interpolation
-  entities: EntitySnapshot[];
-}
-
-interface EntitySnapshot {
-  id: number; // server-assigned; client mirrors this ID
-  type: 'player' | 'projectile' | 'prop'; // what it does
-  modelId: number; // which GLB to render
-  position: { x: number; y: number; z: number };
-  rotation: { x: number; y: number; z: number; w: number };
-  health?: number;
-}
-```
-
-`sequenceNumber` and `tick` are designed in from the start so client-side prediction and delta compression can be added later without protocol changes.
+`sequenceNumber` and `tick` cost nothing now but unlock client-side prediction and delta compression later without protocol changes.
 
 ## Stack
 
-| Concern    | Choice                              |
-| ---------- | ----------------------------------- |
-| Rendering  | Three.js                            |
-| ECS        | bitecs                              |
-| Physics    | Rapier.js (Rust/WASM)               |
-| Networking | Socket.io                           |
-| Server     | Node.js + TypeScript                |
-| Bundler    | Vite                                |
-| Hosting    | Docker on Hetzner VPS via Portainer |
-
-Single Docker container: Express serves the compiled client, Socket.io runs on the same HTTP server.
+Three.js · bitecs · Rapier.js (WASM) · Socket.io · Node.js/TypeScript · Vite · Docker on Hetzner via Portainer. Single container: Express serves the compiled client, Socket.io on the same HTTP server.
 
 ## Player Persistence
 
-Players identified by UUID in `localStorage` (not socket ID, which changes on reconnect). Server keeps `Map<uuid, SavedPlayerState>` in `server/playerStore.ts`. State is lost on server restart — swapping the Map for a database is a one-file change when needed.
+Players identified by UUID in `localStorage` (not socket ID — changes on reconnect). Server: `Map<uuid, SavedPlayerState>` in `server/playerStore.ts`. State lost on restart — swapping the Map for a DB is a one-file change.
