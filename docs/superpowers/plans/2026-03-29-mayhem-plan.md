@@ -1,18 +1,10 @@
 # Mayhem — Plan
 
-A living todo list. Move things between sections as priorities shift. Keep **Now** to one or two items max.
-
 See `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the full architecture.
 
 ---
 
-## Now
-
-- [ ] **Project setup** — scaffold the monorepo (`packages/engine`, `packages/games/mayhem`, `packages/client`, `packages/server`, `packages/shared`), configure TypeScript for all packages, set up Vite for the client, wire up package cross-references so all packages are importable from each other. Add `docker-compose.yml` for local dev and a `Dockerfile` for the single container. Add GitHub Actions workflow to build and push to GitHub Container Registry on push to main. Goal: `docker compose up` runs locally, a push to main produces a deployable image.
-
----
-
-## Up Next
+- [x] **Project setup** — scaffold the monorepo (`packages/engine`, `packages/games/mayhem`, `packages/client`, `packages/server`, `packages/shared`), configure TypeScript for all packages, set up Vite for the client, wire up package cross-references so all packages are importable from each other. Add `docker-compose.yml` for local dev and a `Dockerfile` for the single container. Add GitHub Actions workflow to build and push to GitHub Container Registry on push to main. Goal: `docker compose up` runs locally, a push to main produces a deployable image.
 
 - [ ] **Rendering skeleton** — initialise a Three.js scene on the client. Flat green plane, a directional light, a camera positioned above it. Open the browser and see something. No networking, no physics, no game logic. Just proof the rendering pipeline works and something is visible on day one.
 
@@ -23,10 +15,6 @@ See `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the fu
 - [ ] **Input + Player movement** — implement `InputMapper` on the client (keyboard + mouse → `PlayerActions`, wrapped in `InputPacket` with sequence number and timestamp, sent to server). On the server, add `spawnPlayer` factory and a `MovementSystem` that reads queued input, applies `velocity × dt` to position via Rapier capsule collider. Client spawns a placeholder box mesh for each player ID in the snapshot and interpolates its position. First playable moment: open browser, move a box around.
 
 - [ ] **Deployment** — configure Portainer stack on Hetzner VPS using the GitHub Container Registry image. Verify the full loop: `git push → GitHub Actions builds image → image pushed → manual redeploy in Portainer → live`. Write deploy steps in the README. Do this early so every feature after this point is immediately visible to anyone with the URL.
-
----
-
-## Backlog
 
 - [ ] **Terrain generation** — implement the simplex noise heightmap generator in `shared/terrain.ts`. Takes a seed, returns a heightmap array. Tunable amplitude and scale. Server builds a Rapier heightfield from it. Client replaces the flat plane with a Three.js mesh built from the same data. Same seed = same world on both sides, nothing sent over the network.
 
@@ -55,7 +43,3 @@ See `docs/superpowers/specs/2026-03-29-mayhem-architecture-design.md` for the fu
 - [ ] **Second game mode (arena)** — implement a simple deathmatch arena as a second `GameMode` to validate the multi-game architecture. Small bounded map, respawning, kill counter. Proves adding a new game is just a new module and one line in the server startup list.
 
 - [ ] **Entity factories cleanup** — review all factories for consistent component sets and physics setup. Ensure all `ModelType` values and client asset registry entries are in place.
-
----
-
-## Done
